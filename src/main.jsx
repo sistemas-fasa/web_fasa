@@ -34,9 +34,21 @@ function usePageMotion() {
     let frame;
     const update = () => {
       frame = undefined;
-      const hero = document.querySelector('.hero');
-      const progress = Math.min(window.scrollY / Math.max(hero.offsetHeight, 1), 1);
-      hero.style.setProperty('--travel', document.documentElement.dataset.motion === 'reduced' ? '0px' : progress * 95 + 'px');
+      const intro = document.querySelector('.store-intro');
+      const progress = Math.max(0, Math.min(-intro.getBoundingClientRect().top / Math.max(intro.offsetHeight - innerHeight, 1), 1));
+      const reduced = document.documentElement.dataset.motion === 'reduced';
+      const zoom = Math.max(0, Math.min(progress / .56, 1));
+      const interior = Math.max(0, Math.min((progress - .34) / .24, 1));
+      const options = Math.max(0, Math.min((progress - .7) / .24, 1));
+      intro.style.setProperty('--entry-hint-opacity', Math.max(0, 1 - progress / .14));
+      intro.style.setProperty('--door-zoom', reduced ? 1 : 1 + zoom * zoom * 3.2);
+      intro.style.setProperty('--inside-opacity', interior);
+      intro.style.setProperty('--inside-scale', reduced ? 1 : 1.12 - interior * .12);
+      intro.style.setProperty('--options-opacity', options);
+      intro.style.setProperty('--options-travel', (1 - options) * 100 + 'px');
+      intro.querySelector('.intro-options').inert = options < .3;
+      document.documentElement.style.setProperty('--header-shift', (1 - options) * -110 + '%');
+      document.documentElement.classList.toggle('intro-passed', progress > .68);
       document.documentElement.style.setProperty('--scroll-progress', window.scrollY / Math.max(document.documentElement.scrollHeight - innerHeight, 1));
     };
     const onScroll = () => {
@@ -44,9 +56,11 @@ function usePageMotion() {
     };
     update();
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
     return () => {
       reveal.disconnect();
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
       cancelAnimationFrame(frame);
     };
   }, []);
@@ -57,18 +71,29 @@ function ImageReveal({ as: Element = 'div', children, ...props }) {
 
   useEffect(() => {
     const element = frame.current;
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          element.classList.add('image-is-visible');
-        } else if (entry.boundingClientRect.top >= window.innerHeight) {
-          element.classList.remove('image-is-visible');
-        }
-      });
-    }, { threshold: 0.14, rootMargin: '0px 0px -8% 0px' });
-
-    observer.observe(element);
-    return () => observer.disconnect();
+    let pending;
+    const update = () => {
+      pending = undefined;
+      const rect = element.getBoundingClientRect();
+      const distance = Math.min(rect.height * .6, innerHeight * .48);
+      const progress = Math.max(0, Math.min((innerHeight * .94 - rect.top) / Math.max(distance, 1), 1));
+      element.style.setProperty('--reveal-progress', progress);
+      element.style.setProperty('--reveal-crop', (1 - progress) * 40 + '%');
+      element.style.setProperty('--reveal-scale', 1 + (1 - progress) * .15);
+      element.style.setProperty('--reveal-travel', (1 - progress) * 35 + 'px');
+      element.classList.toggle('image-is-visible', progress > 0);
+    };
+    const onScroll = () => {
+      if (!pending) pending = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      cancelAnimationFrame(pending);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
   }, []);
 
   return <Element ref={frame} data-image-reveal {...props}>{children}</Element>;
@@ -92,43 +117,39 @@ function CategoryVisual({ category, compact = false }) {
   return <img src={media(category.image + '.webp')} alt={category.alt} width="1536" height="1024" className="category-image" />;
 }
 
-function Categories({ selected, setSelected }) {
+function CategoryDetail({ selected, onClose }) {
+  const dialog = useRef(null);
   const current = categories[selected];
+
+  useEffect(() => {
+    dialog.current.showModal();
+  }, []);
+
   return (
-    <section className="categories section" id="rubros">
-      <div className="shell section-heading" data-reveal>
-        <div><span className="eyebrow">De la estructura al último detalle</span><h2>Tu proyecto.<br /><em>Cada etapa.</em></h2></div>
-        <p>Materiales, terminaciones y herramientas.<br />Elegí por dónde empezar.</p>
-      </div>
-      <div className="shell">
-        <div className="category-tabs" aria-label="Rubros disponibles">
-          {categories.map((category, index) => (
-            <button type="button" key={category.title} aria-pressed={selected === index} aria-controls="category-detail" onClick={() => setSelected(index)}>
-              {category.title}<Arrow diagonal />
-            </button>
-          ))}
-        </div>
-        <ImageReveal className={'category-stage ' + (selected === 3 ? 'tools-stage' : '')} id="category-detail" aria-live="polite" key={current.title}>
-          <CategoryVisual category={current} />
-          <div className="category-caption">
-            <span className="eyebrow">{current.title}</span>
-            <h3>{current.phrase}</h3>
-            <p>{current.text}</p>
-            <div className="category-items">
-              {current.items.map(item => <a key={item} href={consult(item)}>{item}<Arrow diagonal /></a>)}
-            </div>
-            <a className="text-link" href={consult(current.title)}>Consultar por {current.title.toLowerCase()} <Arrow diagonal /></a>
+    <dialog ref={dialog} className="category-dialog" aria-label={current.title} onCancel={onClose} onClick={event => {
+      if (event.target === dialog.current) onClose();
+    }}>
+      <button type="button" className="dialog-close" onClick={onClose} aria-label="Cerrar detalle del rubro">Cerrar <span aria-hidden="true">×</span></button>
+      <div className={'category-stage ' + (selected === 3 ? 'tools-stage' : '')}>
+        <CategoryVisual category={current} />
+        <div className="category-caption">
+          <span className="eyebrow">{current.title}</span>
+          <h3>{current.phrase}</h3>
+          <p>{current.text}</p>
+          <div className="category-items">
+            {current.items.map(item => <a key={item} href={consult(item)}>{item}<Arrow diagonal /></a>)}
           </div>
-          <span className="image-note">{selected === 3 ? 'Imágenes oficiales de referencia · Consultá modelos disponibles' : 'Ambientación ilustrativa'}</span>
-        </ImageReveal>
-        {current.brands.length > 0 && <div className="category-brands"><span>Marcas del rubro</span>{current.brands.map(brand => <strong key={brand}>{brand}</strong>)}</div>}
+          <a className="text-link" href={consult(current.title)}>Consultar por {current.title.toLowerCase()} <Arrow diagonal /></a>
+        </div>
+        <span className="image-note">{selected === 3 ? 'Imágenes oficiales de referencia · Consultá modelos disponibles' : 'Ambientación ilustrativa'}</span>
       </div>
-    </section>
+      {current.brands.length > 0 && <div className="category-brands"><span>Marcas del rubro</span>{current.brands.map(brand => <strong key={brand}>{brand}</strong>)}</div>}
+    </dialog>
   );
 }
 
 function App() {
-  const [selected, setSelected] = useState(0);
+  const [selected, setSelected] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButton = useRef(null);
   const [motionEnabled, setMotionEnabled] = useState(true);
@@ -154,7 +175,13 @@ function App() {
   function chooseCategory(index) {
     setSelected(index);
     setMenuOpen(false);
-    document.getElementById('rubros').scrollIntoView({ behavior: motionEnabled ? 'smooth' : 'instant' });
+
+  }
+
+  function enterStore() {
+    const intro = document.querySelector('.store-intro');
+    const destination = intro.offsetTop + (intro.offsetHeight - innerHeight) * .65;
+    window.scrollTo({ top: destination, behavior: motionEnabled ? 'smooth' : 'instant' });
   }
 
   return (
@@ -184,23 +211,33 @@ function App() {
         </div>}
       </header>
       <main id="contenido">
-        <section id="inicio" className="hero">
-          <div className="hero-photo"><img src={media('fachada.webp')} width="1760" height="990" alt="Fachada y entrada de Ferretería Avenida en Puerto Rico" fetchPriority="high" /></div>
-          <div className="hero-shade" />
-          <div className="shell hero-copy">
-            <p className="eyebrow hero-eyebrow">Ferretería Avenida · Puerto Rico, Misiones</p>
-            <h1><span>Tu obra.</span><span>Tu casa.</span><span className="hero-last">Tu Avenida.</span></h1>
-            <div className="hero-bottom">
-              <p>Materiales, herramientas y terminaciones <br />para construir lo que tenés en mente.</p>
-              <a className="round-link" href="#rubros"><span>Explorar<br />rubros</span><Arrow diagonal /></a>
+        <section id="inicio" className="store-intro" aria-label="Entrada a Ferretería Avenida">
+          <h1 className="visually-hidden">Ferretería Avenida, Puerto Rico, Misiones</h1>
+          <div className="intro-screen">
+            <img className="intro-facade" src={media('fachada.webp')} width="1760" height="990" alt="Fachada de Ferretería Avenida y puerta de entrada" fetchPriority="high" />
+            <img className="intro-interior" src={media('salon.webp')} width="1100" height="825" alt="Salón de ventas de Ferretería Avenida" />
+            <button type="button" className="entry-hint" onClick={enterStore}>
+              <span className="entry-mouse" aria-hidden="true"><span /></span>
+              <span>Deslizá para entrar</span>
+              <span aria-hidden="true">↓</span>
+            </button>
+            <div className="intro-options" id="rubros">
+              <div className="shell">
+                <p className="eyebrow">Bienvenido a Ferretería Avenida</p>
+                <h2>¿Qué vas a construir?</h2>
+                <div className="intro-rubros">
+                  {categories.map((category, index) => (
+                    <button type="button" key={category.title} onClick={() => chooseCategory(index)}>
+                      <img src={media(category.image + '.webp')} alt="" width="600" height="400" />
+                      <span>{category.title}<Arrow diagonal /></span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-          <a className="scroll-cue" href="#rubros">Deslizá para descubrir <span aria-hidden="true">↓</span></a>
         </section>
-        <div className="category-ribbon" aria-label="Accesos a rubros">
-          {categories.map((category, index) => <button type="button" key={category.title} onClick={() => chooseCategory(index)}>{category.title}<Arrow diagonal /></button>)}
-        </div>
-        <Categories selected={selected} setSelected={setSelected} />
+
         <section className="story" id="empresa">
           <ImageReveal className="story-photo"><img src={media('mostrador.webp')} width="1100" height="825" alt="Atención en el mostrador de Avenida" loading="lazy" /><span>En el mostrador, como siempre.</span></ImageReveal>
           <div className="story-copy" data-reveal>
@@ -210,7 +247,6 @@ function App() {
             <a className="text-link" href={maps}>Vení a conocernos <Arrow diagonal /></a>
           </div>
         </section>
-        <ImageReveal className="panorama"><img src={media('panoramica.webp')} width="1920" height="368" alt="Vista panorámica del salón de Avenida" loading="lazy" /></ImageReveal>
         <section className="campaign section" id="campanas">
           <div className="shell section-heading" data-reveal><div><span className="eyebrow">Ideas para renovar</span><h2>Imaginá<br /><em>lo que viene.</em></h2></div><p>Empezá por un ambiente.<br />Elegí cada detalle.</p></div>
           <div className="shell campaign-grid">
@@ -246,6 +282,7 @@ function App() {
           </button>
         </div>
       </footer>
+      {selected !== null && <CategoryDetail selected={selected} onClose={() => setSelected(null)} />}
       {menuOpen && <button className="menu-backdrop" type="button" aria-label="Cerrar menú de rubros" onClick={() => setMenuOpen(false)} />}
     </>
   );

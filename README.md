@@ -26,11 +26,10 @@ La vista previa queda disponible en http://127.0.0.1:4173/. El sitio compilado s
 
 ## Qué incluye esta propuesta
 
-- Portada con fotografía de la fachada, entrada animada y desplazamiento de la imagen.
-- Menú visual y selector de Construcción, Terminaciones, Instalaciones y Herramientas.
-- Aparición de fotografías al entrar en pantalla, con recorte, zoom y texto escalonado.
-- Repetición de la aparición al regresar desde arriba a una sección.
-- Fotografías del mostrador y panorámica del salón.
+- Entrada a pantalla completa con la fachada sola. El scroll acerca la vista a la puerta, da paso al salón y muestra los cuatro rubros. El encabezado aparece al llegar a las opciones.
+- Indicación «Deslizá para entrar» sobre la fachada y una única selección de rubros sobre el salón. Cada tarjeta abre un detalle modal, que se cierra con el botón Cerrar o Escape.
+- Secuencia de entrada y aparición de fotografías ligadas a la posición del scroll, con recorte, zoom y texto. Al subir, se reproducen en sentido inverso.
+- Fotografía del mostrador junto a la presentación institucional.
 - Dos composiciones de campaña de ejemplo.
 - Enlaces al Portal de Ventas, WhatsApp, teléfono, correo y ubicación.
 - Diseño adaptable a celular y escritorio.
