@@ -1,0 +1,10 @@
+import React from 'react';
+import {AbsoluteFill, CanvasImage, Img, Easing, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+export const red='#ed161f';
+export const clamp={extrapolateLeft:'clamp',extrapolateRight:'clamp'} as const;
+export const Frame:React.FC<{children:React.ReactNode;light?:boolean}>=({children,light=false})=><AbsoluteFill style={{background:light?'#f4f1eb':'#151515',color:light?'#151515':'white',fontFamily:'Arial, sans-serif',overflow:'hidden'}}>{children}</AbsoluteFill>;
+export const Logo=()=> <div style={{position:'absolute',top:110,left:90,background:'white',padding:'22px 26px',borderRadius:3}}><Img src={staticFile('media/logo.png')} style={{width:330,height:83,objectFit:'contain'}}/></div>;
+export const Kicker:React.FC<{children:React.ReactNode}>=({children})=><div style={{fontSize:29,letterSpacing:5,fontWeight:700,textTransform:'uppercase',color:red,marginBottom:28}}>{children}</div>;
+export const Title:React.FC<{children:React.ReactNode;size?:number}>=({children,size=106})=>{const f=useCurrentFrame();const {fps}=useVideoConfig();return <div style={{fontSize:size,fontWeight:900,lineHeight:1.02,letterSpacing:-5,opacity:interpolate(f,[0,.3*fps],[0,1],clamp),translate:`0 ${interpolate(f,[0,.5*fps],[50,0],{...clamp,easing:Easing.bezier(.16,1,.3,1)})}px`}}>{children}</div>};
+export const Phone:React.FC<{image:string;style?:React.CSSProperties}>=({image,style})=><div style={{width:610,height:1085,border:'16px solid #242424',borderRadius:58,overflow:'hidden',background:'white',boxShadow:'0 45px 100px #0006',...style}}><CanvasImage src={staticFile(image)} style={{width:'100%',height:'100%',objectFit:'cover'}}/></div>;
+export const Footer=()=> <div style={{position:'absolute',bottom:145,left:90,right:90,display:'flex',justifyContent:'space-between',fontSize:28,fontWeight:700,letterSpacing:1}}><span>FERRETERÍA AVENIDA</span><span>MISIONES ↗</span></div>;
