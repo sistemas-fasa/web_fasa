@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ferreteriaavenida.com.ar/sitemap.xml
